@@ -32,7 +32,7 @@ const uint8_t SYNC_BYTE = 0x5A;
 
 // Provisional request payload: left RPM (signed int16 LE), right RPM
 // (signed int16 LE), in whole RPM. Reply payload: status, reason, left RPM
-// (signed int16 LE), right RPM (signed int16 LE). ACK=0, NACK=1.
+// (signed int16 LE), right RPM (signed int16 LE). ACK=0, NACK=1. blah
 const uint8_t REQUEST_PAYLOAD_LENGTH = 4;
 const uint8_t REPLY_PAYLOAD_LENGTH = 6;
 const uint8_t MAX_PAYLOAD_LENGTH = 16;
