@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <math.h>
+#include "MotorState.h"
 
 // Two independent RPM loops for a classic Arduino Nano (ATmega328P),
 // L298N dual H-bridge, and one rising-edge encoder input per motor.
@@ -86,27 +87,6 @@ void setRS485TransmitMode() {
   digitalWrite(RS485_DIRECTION_PIN, RS485_TX_ACTIVE_LEVEL);
   delayMicroseconds(20);
 }
-
-enum FaultCode : uint8_t {
-  FAULT_NONE = 0,
-  FAULT_LEFT_ENCODER_STALL,
-  FAULT_RIGHT_ENCODER_STALL
-};
-
-struct MotorState {
-  uint8_t enablePin;
-  uint8_t in1Pin;
-  uint8_t in2Pin;
-  float countsPerRev;
-  float targetRPM;
-  float measuredRPM;
-  float integral;
-  float previousError;
-  int8_t appliedDirection;
-  int8_t reportDirection;
-  unsigned long lastPulseMs;
-  int pwm;
-};
 
 MotorState leftMotor = {
   LEFT_EN, LEFT_IN1, LEFT_IN2, LEFT_COUNTS_PER_REV,
