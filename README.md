@@ -101,7 +101,10 @@ industrial safety function.
 
 `teleop.py` sends the binary protocol above through a USB-to-RS-485 adapter. It
 sends each selected RPM setpoint to both node IDs `0x01` and `0x02`, and repeats
-both commands every 100 ms. It requires Python 3.10 or newer and `pyserial`:
+both commands every 100 ms. It sends to one node and waits briefly for its reply
+before addressing the next node, to give the half-duplex RS-485 bus time to turn
+around. The terminal shows each node's ACK/NACK or `no reply` status. It requires
+Python 3.10 or newer and `pyserial`:
 
 ```sh
 python3 -m pip install -r requirements.txt

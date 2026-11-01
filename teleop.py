@@ -22,6 +22,7 @@ MSG_REQUEST = 0x01
 MSG_REPLY = 0x81
 BAUD = 115200
 HEARTBEAT_SECONDS = 0.10
+REPLY_WAIT_SECONDS = 0.04
 
 
 def crc16_ccitt_false(data: bytes) -> int:
@@ -72,6 +73,19 @@ class ReplyParser:
             status, reason, left, right = struct.unpack_from("<BBhh", frame, 7)
             replies.append((frame[3], frame[5], status, reason, left, right))
         return replies
+
+
+def send_and_wait(port: serial.Serial, parser: ReplyParser, node: int,
+                  sequence: int, left_rpm: int, right_rpm: int) -> tuple[int, int, int, int] | None:
+    """Send one node's frame, then wait before using the half-duplex bus again."""
+    port.write(make_command(node, sequence, left_rpm, right_rpm))
+    deadline = time.monotonic() + REPLY_WAIT_SECONDS
+    while time.monotonic() < deadline:
+        incoming = port.read(port.in_waiting or 1)
+        for reply_node, reply_sequence, status, reason, left, right in parser.feed(incoming):
+            if reply_node == node and reply_sequence == sequence:
+                return status, reason, left, right
+    return None
 
 
 class KeyReader:
@@ -134,7 +148,7 @@ def main() -> int:
     sequences = {node: 0 for node in TARGET_NODES}
     left, right = 0, 0
     last_sent = 0.0
-    last_reply = "waiting for reply"
+    node_status = {node: "waiting" for node in TARGET_NODES}
     parser = ReplyParser()
     print("Navibot serial teleop | W forward | S reverse | A pivot left | D pivot right")
     print("SPACE stop | X or Ctrl-C quit. Select a direction; its command repeats at 10 Hz until changed.")
@@ -176,18 +190,28 @@ def main() -> int:
                         now = time.monotonic()
                         if changed or now - last_sent >= HEARTBEAT_SECONDS:
                             for node in TARGET_NODES:
-                                port.write(make_command(node, sequences[node], left, right))
+                                reply = send_and_wait(
+                                    port, parser, node, sequences[node], left, right
+                                )
+                                if reply is None:
+                                    node_status[node] = "no reply"
+                                else:
+                                    status, reason, measured_left, measured_right = reply
+                                    if status == 0:
+                                        node_status[node] = (
+                                            f"ACK L:{measured_left} R:{measured_right} RPM"
+                                        )
+                                    else:
+                                        node_status[node] = f"NACK reason:{reason}"
                                 sequences[node] = (sequences[node] + 1) & 0xFF
                             last_sent = now
 
-                        incoming = port.read(port.in_waiting or 1)
-                        for node, reply_sequence, status, reason, measured_left, measured_right in parser.feed(incoming):
-                            if status == 0:
-                                last_reply = f"node 0x{node:02X} ACK measured L:{measured_left} R:{measured_right} RPM"
-                            else:
-                                last_reply = f"node 0x{node:02X} NACK reason:{reason}"
                         sys.stdout.write(
-                            f"\rCommand L:{left:>4} R:{right:>4} RPM | {last_reply}       "
+                            f"\rCommand L:{left:>4} R:{right:>4} RPM | "
+                            + " | ".join(
+                                f"0x{node:02X} {node_status[node]}" for node in TARGET_NODES
+                            )
+                            + "       "
                         )
                         sys.stdout.flush()
                         if exiting:
@@ -195,7 +219,7 @@ def main() -> int:
                 finally:
                     # Stop the motors before closing the serial port on normal exit or Ctrl-C.
                     for node in TARGET_NODES:
-                        port.write(make_command(node, sequences[node], 0, 0))
+                        send_and_wait(port, parser, node, sequences[node], 0, 0)
                         sequences[node] = (sequences[node] + 1) & 0xFF
                     port.flush()
                     print("\nStop command sent.")
