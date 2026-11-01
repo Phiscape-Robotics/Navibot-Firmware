@@ -106,10 +106,17 @@ python3 -m pip install -r requirements.txt
 python3 teleop.py --port /dev/cu.usbserial-XXXX --rpm 30
 ```
 
+On Windows, open PowerShell or Command Prompt and use the COM port shown in
+Device Manager, for example:
+
+```powershell
+python teleop.py --port COM3 --rpm 30
+```
+
 On Linux, the port is often `/dev/ttyUSB0` or `/dev/ttyACM0`. On macOS, use the
 device listed under `/dev/cu.*`. The script uses 115200 baud by default, matching
-the sketch; override it with `--baud` if needed. Run it in a macOS/Linux terminal
-that supports single-key input.
+the sketch; override it with `--baud` if needed. Run it in an interactive
+Windows, macOS, or Linux terminal that supports single-key input.
 
 | Key | Command sent to the two motor firmware |
 | --- | --- |

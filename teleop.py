@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import os
-import select
 import struct
 import sys
 import time
@@ -76,27 +75,46 @@ class ReplyParser:
 
 
 class KeyReader:
-    """Read single keys without waiting for Enter (macOS/Linux terminals)."""
+    """Read single keys without waiting for Enter on Windows, macOS, or Linux."""
 
     def __enter__(self) -> "KeyReader":
-        if os.name != "posix" or not sys.stdin.isatty():
-            raise RuntimeError("Run this controller in a macOS/Linux terminal that supports raw key input.")
-        import termios
-        import tty
+        if not sys.stdin.isatty():
+            raise RuntimeError("Run this controller in an interactive terminal.")
+        if os.name == "nt":
+            import msvcrt
 
-        self._termios = termios
-        self._fd = sys.stdin.fileno()
-        self._old_settings = termios.tcgetattr(self._fd)
-        tty.setcbreak(self._fd)
+            self._msvcrt = msvcrt
+        elif os.name == "posix":
+            import termios
+            import tty
+
+            self._termios = termios
+            self._fd = sys.stdin.fileno()
+            self._old_settings = termios.tcgetattr(self._fd)
+            tty.setcbreak(self._fd)
+        else:
+            raise RuntimeError("Unsupported operating system for keyboard input.")
         return self
 
     def __exit__(self, *_: object) -> None:
-        self._termios.tcsetattr(self._fd, self._termios.TCSADRAIN, self._old_settings)
+        if os.name == "posix":
+            self._termios.tcsetattr(self._fd, self._termios.TCSADRAIN, self._old_settings)
 
     def read(self) -> str | None:
-        ready, _, _ = select.select([sys.stdin], [], [], 0)
-        if ready:
-            return sys.stdin.read(1).lower()
+        if os.name == "nt":
+            if self._msvcrt.kbhit():
+                key = self._msvcrt.getwch()
+                # Ignore the second byte of Windows extended keys (arrows, etc.).
+                if key in ("\x00", "\xe0"):
+                    self._msvcrt.getwch()
+                    return None
+                return key.lower()
+        else:
+            import select
+
+            ready, _, _ = select.select([sys.stdin], [], [], 0)
+            if ready:
+                return sys.stdin.read(1).lower()
         return None
 
 
