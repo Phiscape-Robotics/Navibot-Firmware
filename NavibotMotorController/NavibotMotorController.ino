@@ -64,7 +64,7 @@ const uint8_t PWM_MAX = 255;
 
 // Start P-only; tune under restrained, low-risk conditions.
 const float KP = 1.70f;
-const float KI = 0.0f;
+const float KI = 0.05f;
 const float KD = 0.0f;
 const float INTEGRAL_LIMIT = 150.0f;
 
