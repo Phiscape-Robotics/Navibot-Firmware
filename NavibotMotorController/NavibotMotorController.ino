@@ -12,10 +12,10 @@ const uint8_t LEFT_IN1 = A4;  // Original IN1
 const uint8_t LEFT_IN2 = A3;  // Original IN2
 const uint8_t LEFT_ENC = 2;   // Original encoder input, INT0
 
-// Added right motor pins.
-const uint8_t RIGHT_EN  = 6;  // ENB PWM
-const uint8_t RIGHT_IN1 = 7;  // IN3
-const uint8_t RIGHT_IN2 = 8;  // IN4
+// Added right motor pins. D6 is reserved for RS-485 direction control.
+const uint8_t RIGHT_EN  = 9;  // ENB PWM
+const uint8_t RIGHT_IN1 = A1; // IN3
+const uint8_t RIGHT_IN2 = A2; // IN4
 const uint8_t RIGHT_ENC = 3;  // Encoder input, INT1
 
 // Set to measured rising edges per output-shaft revolution.
@@ -73,10 +73,9 @@ const float KI = 0.05f;
 const float KD = 0.0f;
 const float INTEGRAL_LIMIT = 150.0f;
 
-// RS-485 direction pin is intentionally not assigned yet. Set this to the
-// transceiver's DE/RE control pin when known. 0xFF leaves transmission logic
-// active at UART level but does not operate a direction-enable GPIO.
-const uint8_t RS485_DIRECTION_PIN = 0xFF;
+// Connect the RS-485 transceiver's DE and /RE pins together to D6.
+// LOW enables the receiver; HIGH enables the driver for replies.
+const uint8_t RS485_DIRECTION_PIN = 6;
 const uint8_t RS485_TX_ACTIVE_LEVEL = HIGH;
 
 enum FaultCode : uint8_t {
@@ -300,6 +299,7 @@ void sendReply(uint8_t sequence, uint8_t status, uint8_t reason) {
   Serial.write(frame, sizeof(frame));
   Serial.flush();
   if (RS485_DIRECTION_PIN != 0xFF) {
+    delayMicroseconds(20);
     digitalWrite(RS485_DIRECTION_PIN, !RS485_TX_ACTIVE_LEVEL);
   }
 }

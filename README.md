@@ -9,14 +9,15 @@ speed magnitude only.
 
 | Function | Left | Right |
 | --- | --- | --- |
-| L298N enable/PWM | D10 / ENA | D6 / ENB |
-| Direction input 1 | A4 / IN1 | D7 / IN3 |
-| Direction input 2 | A3 / IN2 | D8 / IN4 |
+| L298N enable/PWM | D10 / ENA | D9 / ENB |
+| Direction input 1 | A4 / IN1 | A1 / IN3 |
+| Direction input 2 | A3 / IN2 | A2 / IN4 |
 | Encoder signal | D2 / INT0 | D3 / INT1 |
 
 The left motor preserves the original sketch's pins exactly: ENA D10, IN1 A4,
-IN2 A3, encoder D2. The right motor uses the added pins shown above. Remove the
-ENA and ENB jumpers on the L298N module so the Nano can control speed with PWM.
+IN2 A3, encoder D2. The right motor uses the pins shown above: ENB D9, IN3 A1,
+IN4 A2, encoder D3. D6 is reserved for RS-485 direction control. Remove the ENA
+and ENB jumpers on the L298N module so the Nano can control speed with PWM.
 Supply motor power from a suitable external supply and join its ground to Nano
 ground. Do not power the motors from the Nano's 5 V pin.
 
@@ -40,10 +41,11 @@ these provisional formats:
   bytes are excluded. CRC is transmitted low byte first.
 - Maximum payload is 16 bytes. `COMMAND_TIMEOUT_MS` is provisionally 1000 ms.
 
-The code sends replies through UART. `RS485_DIRECTION_PIN` is `0xFF` until the
-transceiver control pin and polarity are provided, so the sketch cannot yet
-switch the transceiver into transmit mode. Set that constant when the hardware
-detail is known. No text diagnostics are sent on the same UART.
+The code sends replies through UART and controls the RS-485 transceiver using
+D6. Tie the transceiver's DE and active-low `/RE` pins together and connect them
+to D6: LOW selects receive mode, and HIGH selects transmit mode for replies.
+The sketch switches back to receive mode after UART transmission completes.
+No text diagnostics are sent on the same UART.
 
 Until commands are sent, both motors start stopped. For a temporary bench run,
 set `START_LEFT_RPM` and/or `START_RIGHT_RPM` near the top of the sketch.
@@ -137,6 +139,6 @@ This firmware only accepts two wheel speeds per node. It cannot command lateral
 strafe or provide the wheel mixing for a three- or four-wheel omni base; that
 requires a matching multi-wheel firmware protocol and motor controller. Verify
 the robot's wheel orientation and motor signs with the wheels raised before
-running it on the floor. The USB-RS485 adapter must provide automatic
-transmit/receive direction control, because the sketch's `RS485_DIRECTION_PIN`
-is not configured yet.
+running it on the floor. The USB-RS485 adapter is the bus master and should
+provide automatic transmit/receive direction control; D6 controls the
+transceiver on the Nano node.
