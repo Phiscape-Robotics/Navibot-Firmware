@@ -94,3 +94,42 @@ This version does not yet include a hardware emergency-stop input, current
 sensing, supply-voltage monitoring, or a hardware watchdog. The L298N module
 and software are suitable for a controlled prototype, not a certified
 industrial safety function.
+
+## USB serial keyboard teleop
+
+`teleop.py` sends the binary protocol above through a USB-to-RS-485 adapter. It
+sends each selected RPM setpoint to both node IDs `0x01` and `0x02`, and repeats
+both commands every 100 ms. It requires Python 3.10 or newer and `pyserial`:
+
+```sh
+python3 -m pip install -r requirements.txt
+python3 teleop.py --port /dev/cu.usbserial-XXXX --rpm 30
+```
+
+On Linux, the port is often `/dev/ttyUSB0` or `/dev/ttyACM0`. On macOS, use the
+device listed under `/dev/cu.*`. The script uses 115200 baud by default, matching
+the sketch; override it with `--baud` if needed. Run it in a macOS/Linux terminal
+that supports single-key input.
+
+| Key | Command sent to the two motor firmware |
+| --- | --- |
+| W | Forward: left +RPM, right +RPM |
+| S | Reverse: left -RPM, right -RPM |
+| A | Pivot left: left -RPM, right +RPM |
+| D | Pivot right: left +RPM, right -RPM |
+| Space | Stop |
+| X or Ctrl-C | Send stop and exit |
+
+The two firmware boards must have different node IDs. The sketch defaults to
+`0x01`; before compiling for the second board, change the `NAVIBOT_NODE_ID`
+default near the protocol constants to `0x02`, then upload that build to the
+second board. Upload a build set to `0x01` to the first board. Do not put two
+boards with the same ID on one bus, since their replies would collide.
+
+This firmware only accepts two wheel speeds per node. It cannot command lateral
+strafe or provide the wheel mixing for a three- or four-wheel omni base; that
+requires a matching multi-wheel firmware protocol and motor controller. Verify
+the robot's wheel orientation and motor signs with the wheels raised before
+running it on the floor. The USB-RS485 adapter must provide automatic
+transmit/receive direction control, because the sketch's `RS485_DIRECTION_PIN`
+is not configured yet.

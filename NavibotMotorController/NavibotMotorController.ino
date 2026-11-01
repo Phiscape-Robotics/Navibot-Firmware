@@ -25,7 +25,12 @@ const float RIGHT_COUNTS_PER_REV = 1000.0f;
 
 // ------------------------- Protocol assumptions ------------------------
 const uint8_t PROTOCOL_VERSION = 0x01;
-const uint8_t NODE_ID = 0x01;
+// Set NAVIBOT_NODE_ID to 0x02 when compiling firmware for the second board.
+// Each RS-485 controller must use a unique ID to avoid reply collisions.
+#ifndef NAVIBOT_NODE_ID
+#define NAVIBOT_NODE_ID 0x01
+#endif
+const uint8_t NODE_ID = NAVIBOT_NODE_ID;
 const uint8_t MSG_REQUEST = 0x01;
 const uint8_t MSG_REPLY = 0x81;
 const uint8_t SYNC_BYTE = 0x5A;
