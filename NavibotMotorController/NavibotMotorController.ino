@@ -78,6 +78,15 @@ const float INTEGRAL_LIMIT = 150.0f;
 const uint8_t RS485_DIRECTION_PIN = 6;
 const uint8_t RS485_TX_ACTIVE_LEVEL = HIGH;
 
+void setRS485ReceiveMode() {
+  digitalWrite(RS485_DIRECTION_PIN, !RS485_TX_ACTIVE_LEVEL);
+}
+
+void setRS485TransmitMode() {
+  digitalWrite(RS485_DIRECTION_PIN, RS485_TX_ACTIVE_LEVEL);
+  delayMicroseconds(20);
+}
+
 enum FaultCode : uint8_t {
   FAULT_NONE = 0,
   FAULT_LEFT_ENCODER_STALL,
@@ -292,16 +301,11 @@ void sendReply(uint8_t sequence, uint8_t status, uint8_t reason) {
   frame[13] = (uint8_t)(crc & 0xFF);
   frame[14] = (uint8_t)(crc >> 8);
 
-  if (RS485_DIRECTION_PIN != 0xFF) {
-    digitalWrite(RS485_DIRECTION_PIN, RS485_TX_ACTIVE_LEVEL);
-    delayMicroseconds(20);
-  }
+  setRS485TransmitMode();
   Serial.write(frame, sizeof(frame));
   Serial.flush();
-  if (RS485_DIRECTION_PIN != 0xFF) {
-    delayMicroseconds(20);
-    digitalWrite(RS485_DIRECTION_PIN, !RS485_TX_ACTIVE_LEVEL);
-  }
+  delayMicroseconds(20);
+  setRS485ReceiveMode();
 }
 
 void rememberSequence(uint8_t sequence) {
@@ -412,6 +416,8 @@ void consumeByte(uint8_t value) {
 }
 
 void processIncomingUART() {
+  // Keep the transceiver listening while waiting for the host's next command.
+  setRS485ReceiveMode();
   // Bound per-loop parsing so a continuous or noisy bus cannot monopolize the
   // CPU and starve the motor sample/timeout checks.
   for (uint8_t consumed = 0; consumed < 32 && Serial.available() > 0; ++consumed) {
@@ -436,10 +442,8 @@ void setup() {
   pinMode(RIGHT_IN2, OUTPUT);
   pinMode(LEFT_ENC, INPUT_PULLUP);
   pinMode(RIGHT_ENC, INPUT_PULLUP);
-  if (RS485_DIRECTION_PIN != 0xFF) {
-    pinMode(RS485_DIRECTION_PIN, OUTPUT);
-    digitalWrite(RS485_DIRECTION_PIN, !RS485_TX_ACTIVE_LEVEL);
-  }
+  pinMode(RS485_DIRECTION_PIN, OUTPUT);
+  setRS485ReceiveMode();
 
   stopAllMotors();
   attachInterrupt(digitalPinToInterrupt(LEFT_ENC), leftEncoderISR, RISING);
